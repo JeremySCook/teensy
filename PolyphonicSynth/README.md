@@ -1,1 +1,1 @@
-Experimental. Not working yet.
+Polyphonic version of 4-button synth
