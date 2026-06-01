@@ -1,6 +1,9 @@
 const int numberButtons = 4;
 const int numberVoices = 4;
 
+unsigned long lastChangeTime[numberButtons];
+const unsigned long debounceMs = 5;
+
 const int buttonPins[numberButtons] = {41, 40, 39, 38};
 const float notes[numberButtons] = {
   130.81, // C3
@@ -44,8 +47,7 @@ AudioEffectEnvelope      envelope3;      //xy=611.5,442
 AudioEffectEnvelope      envelope4;      //xy=611.5,482
 AudioEffectEnvelope      envelope1;      //xy=613.5,360
 AudioMixer4              mixer1;         //xy=772,417
-AudioEffectWaveshaper    waveshape1;     //xy=916,417
-AudioOutputI2S           i2s1;           //xy=1084.5,416
+AudioOutputI2S           i2s1;           //xy=946.5,416
 AudioConnection          patchCord1(waveform1, envelope1);
 AudioConnection          patchCord2(waveform3, envelope3);
 AudioConnection          patchCord3(waveform2, envelope2);
@@ -54,11 +56,11 @@ AudioConnection          patchCord5(envelope2, 0, mixer1, 1);
 AudioConnection          patchCord6(envelope3, 0, mixer1, 2);
 AudioConnection          patchCord7(envelope4, 0, mixer1, 3);
 AudioConnection          patchCord8(envelope1, 0, mixer1, 0);
-AudioConnection          patchCord9(mixer1, waveshape1);
-AudioConnection          patchCord10(waveshape1, 0, i2s1, 0);
-AudioConnection          patchCord11(waveshape1, 0, i2s1, 1);
+AudioConnection          patchCord9(mixer1, 0, i2s1, 0);
+AudioConnection          patchCord10(mixer1, 0, i2s1, 1);
 AudioControlSGTL5000     sgtl5000_1;     //xy=649.5,604
 // GUItool: end automatically generated code
+
 
 AudioSynthWaveform* waves[numberVoices] = {
   &waveform1,
@@ -170,6 +172,15 @@ void setup() {
   waveform3.begin(WAVEFORM_SAWTOOTH);
   waveform4.begin(WAVEFORM_SAWTOOTH);
 
+  waveform1.frequency(100);
+  waveform2.frequency(100);
+  waveform3.frequency(100);
+  waveform4.frequency(100);
+
+for (int i = 0; i < numberButtons; i++) {
+    lastChangeTime[i] = 0;
+}
+
 for (int i = 0; i < numberButtons; i++) {
   pinMode(buttonPins[i], INPUT_PULLUP);
 }
@@ -179,16 +190,28 @@ for (int i = 0; i < numberButtons; i++) {
 void loop() {
 
 for (int i = 0; i < numberButtons; i++) {
-  keyState[i] = (digitalRead(buttonPins[i]) == LOW);
-if (keyState[i] && !prevKeyState[i]) {
-  startNote(i);
+bool rawState = (digitalRead(buttonPins[i]) == LOW);
+
+if (rawState != keyState[i] &&
+    millis() - lastChangeTime[i] > debounceMs) {
+
+    lastChangeTime[i] = millis();
+
+    keyState[i] = rawState;
+
+    if (keyState[i]) {
+        startNote(i);
+    } else {
+        stopNote(i);
+    }
+}
 }
 
-if (!keyState[i] && prevKeyState[i]) {
-  stopNote(i);
+bool anyKey = false;
+for (int i = 0; i < numberButtons; i++) {
+  if (keyState[i]) anyKey = true;
 }
 
-prevKeyState[i] = keyState[i];
-}
+digitalWrite(LED_BUILTIN, anyKey);
 
 }
