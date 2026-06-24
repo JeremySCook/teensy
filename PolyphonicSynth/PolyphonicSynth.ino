@@ -36,6 +36,8 @@ int voiceNote[numberVoices];
 #include <SPI.h>
 #include <SD.h>
 #include <SerialFlash.h>
+#include <SparkFun_TPA2016D2_Arduino_Library.h> //Click here to get the library: http://librarymanager/All#SparkFun_TPA2016D2
+TPA2016D2 amp;
 
 // GUItool: begin automatically generated code
 AudioSynthWaveform       waveform1;      //xy=465.5,354
@@ -122,6 +124,24 @@ void stopNote(int noteIndex) {
 void setup() {
 
   Serial.begin(9600);
+  Wire.begin();
+
+  if (amp.begin() == false) //Begin communication over I2C
+  {
+    Serial.println("The device did not respond. Please check wiring.");
+    while (1); //Freeze
+  }
+  Serial.println("Device is connected properly.");
+
+  // for gain control to react to changes quickly, we need to adjust some of the AGC settings as so...
+  amp.disableLimiter(); // note this also changes compression ratio to 1:1, then disables limiter.
+  amp.disableNoiseGate(); // disabling the noisegate allows us to always change the gain, even with very little sound at the source.
+  amp.writeRelease(1); // 1-63 are valid values. 1 being the shortest (aka fastest) release setting, this allows gain increases to happen quickly.
+  amp.writeAttack(1); // 1-63 are valid values. 1 being the shortest (aka fastest) attack setting, this allows gain decreases to happen quickly.
+
+  Serial.println("gain:+10");
+  amp.writeFixedGain(30); // aka "full gain at +30dB", accepts values from 0 to 30
+  delay(5000);
 
   AudioMemory(40);
   sgtl5000_1.enable();
