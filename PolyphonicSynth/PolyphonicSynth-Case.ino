@@ -21,9 +21,11 @@ const float notes[numberButtons] = {
   261.63  // C4
 };
 
-/*
-*/
+const int octaveDownButton = 33;
+const int octaveUpButton   = 34;
 
+bool octaveDown = false;
+bool octaveUp = false;
 
 bool keyState[numberButtons];
 bool prevKeyState[numberButtons];
@@ -44,24 +46,35 @@ AudioSynthWaveform       waveform1;      //xy=465.5,354
 AudioSynthWaveform       waveform3;      //xy=465.5,444
 AudioSynthWaveform       waveform2;      //xy=466,400
 AudioSynthWaveform       waveform4;      //xy=466.5,489
+AudioPlaySdWav           playSdWav3;     //xy=469.5,634
+AudioPlaySdWav           playSdWav2;     //xy=470.5,593
+AudioPlaySdWav           playSdWav1;     //xy=471.5,552
 AudioEffectEnvelope      envelope2;      //xy=611.5,401
 AudioEffectEnvelope      envelope3;      //xy=611.5,442
 AudioEffectEnvelope      envelope4;      //xy=611.5,482
 AudioEffectEnvelope      envelope1;      //xy=613.5,360
-AudioMixer4              mixer1;         //xy=772,417
-AudioOutputI2S           i2s1;           //xy=946.5,416
+AudioMixer4              mixer2;         //xy=764.5,573
+AudioMixer4              mixer1;         //xy=769,421
+AudioMixer4              mixer3;         //xy=941.5,495
+AudioOutputI2S           i2s1;           //xy=1117.5,495
 AudioConnection          patchCord1(waveform1, envelope1);
 AudioConnection          patchCord2(waveform3, envelope3);
 AudioConnection          patchCord3(waveform2, envelope2);
 AudioConnection          patchCord4(waveform4, envelope4);
-AudioConnection          patchCord5(envelope2, 0, mixer1, 1);
-AudioConnection          patchCord6(envelope3, 0, mixer1, 2);
-AudioConnection          patchCord7(envelope4, 0, mixer1, 3);
-AudioConnection          patchCord8(envelope1, 0, mixer1, 0);
-AudioConnection          patchCord9(mixer1, 0, i2s1, 0);
-AudioConnection          patchCord10(mixer1, 0, i2s1, 1);
-AudioControlSGTL5000     sgtl5000_1;     //xy=649.5,604
+AudioConnection          patchCord5(playSdWav3, 0, mixer2, 2);
+AudioConnection          patchCord6(playSdWav2, 0, mixer2, 1);
+AudioConnection          patchCord7(playSdWav1, 0, mixer2, 0);
+AudioConnection          patchCord8(envelope2, 0, mixer1, 1);
+AudioConnection          patchCord9(envelope3, 0, mixer1, 2);
+AudioConnection          patchCord10(envelope4, 0, mixer1, 3);
+AudioConnection          patchCord11(envelope1, 0, mixer1, 0);
+AudioConnection          patchCord12(mixer2, 0, mixer3, 1);
+AudioConnection          patchCord13(mixer1, 0, mixer3, 0);
+AudioConnection          patchCord14(mixer3, 0, i2s1, 1);
+AudioConnection          patchCord15(mixer3, 0, i2s1, 0);
+AudioControlSGTL5000     sgtl5000_1;     //xy=552.5,758
 // GUItool: end automatically generated code
+
 
 
 AudioSynthWaveform* waves[numberVoices] = {
@@ -100,7 +113,7 @@ void startNote(int noteIndex) {
   voiceActive[v] = true;
   voiceNote[v] = noteIndex;
 
-  waves[v]->frequency(notes[noteIndex]);
+  waves[v]->frequency(getNoteFrequency(noteIndex));
 
   envs[v]->noteOn();
 }
@@ -120,6 +133,32 @@ void stopNote(int noteIndex) {
   }
 }
 
+float getNoteFrequency(int noteIndex) {
+
+  float freq = notes[noteIndex];
+
+  if (octaveUp && !octaveDown) {
+    freq *= 2.0f;
+  }
+  else if (octaveDown && !octaveUp) {
+    freq *= 0.5f;
+  }
+
+  return freq;
+}
+
+void updateActiveNotes() {
+
+  for (int v = 0; v < numberVoices; v++) {
+
+    if (voiceActive[v]) {
+
+      waves[v]->frequency(
+        getNoteFrequency(voiceNote[v])
+      );
+    }
+  }
+}
 
 void setup() {
 
@@ -201,13 +240,31 @@ for (int i = 0; i < numberButtons; i++) {
     lastChangeTime[i] = 0;
 }
 
+// Configure button input modes
+
 for (int i = 0; i < numberButtons; i++) {
   pinMode(buttonPins[i], INPUT_PULLUP);
 }
+  pinMode(octaveDownButton, INPUT_PULLUP);
+  pinMode(octaveUpButton, INPUT_PULLUP);
   pinMode(LED_BUILTIN, OUTPUT);
 }
 
+// Main loop
+
 void loop() {
+
+bool newOctaveDown = (digitalRead(octaveDownButton) == LOW);
+bool newOctaveUp   = (digitalRead(octaveUpButton) == LOW);
+
+if (newOctaveDown != octaveDown ||
+    newOctaveUp   != octaveUp) {
+
+  octaveDown = newOctaveDown;
+  octaveUp   = newOctaveUp;
+
+  updateActiveNotes();
+}
 
 for (int i = 0; i < numberButtons; i++) {
 bool rawState = (digitalRead(buttonPins[i]) == LOW);
