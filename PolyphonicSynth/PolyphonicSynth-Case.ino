@@ -208,7 +208,29 @@ if (rawState != keyState[i] &&
 }
 
 void updateDrums() {
-  //code here
+
+    bool newKick = (digitalRead(kickButton) == LOW);
+
+    if (newKick && !kickState) {
+        playKick.play("KICK.WAV");
+    }
+    kickState = newKick;
+
+
+    bool newSnare = (digitalRead(snareButton) == LOW);
+
+    if (newSnare && !snareState) {
+        playSnare.play("SNARE.WAV");
+    }
+    snareState = newSnare;
+
+
+    bool newHat = (digitalRead(hatButton) == LOW);
+
+    if (newHat && !hatState) {
+        playHat.play("HIHAT.WAV");
+    }
+    hatState = newHat;
 }
 
 void setup() {
@@ -233,7 +255,7 @@ void setup() {
   amp.writeFixedGain(30); // aka "full gain at +30dB", accepts values from 0 to 30
   delay(5000);
 
-  AudioMemory(40);
+  AudioMemory(80);
   sgtl5000_1.enable();
   sgtl5000_1.volume(0.32);
 
@@ -267,10 +289,20 @@ void setup() {
   envelope4.sustain(0.7);
   envelope4.release(100);
 
+  //Keys mixer
   mixer1.gain(0, 0.25);
   mixer1.gain(1, 0.25);
   mixer1.gain(2, 0.25);
   mixer1.gain(3, 0.25);
+
+  // Drum mixer
+  mixer2.gain(0, 1.0);   // Hat
+  mixer2.gain(1, 1.0);   // Snare
+  mixer2.gain(2, 1.0);   // Kick
+
+  // Final mixer
+  mixer3.gain(0, 0.7);   // Synth
+  mixer3.gain(1, 0.7);   // Drums
 
   waveform1.amplitude(1.0);
   waveform2.amplitude(1.0);
@@ -299,6 +331,9 @@ for (int i = 0; i < numberButtons; i++) {
   pinMode(octaveDownButton, INPUT_PULLUP);
   pinMode(octaveUpButton, INPUT_PULLUP);
   pinMode(LED_BUILTIN, OUTPUT);
+  pinMode(kickButton, INPUT_PULLUP);
+  pinMode(snareButton, INPUT_PULLUP);
+  pinMode(hatButton, INPUT_PULLUP);
 
 //SD Card Setup:
 
