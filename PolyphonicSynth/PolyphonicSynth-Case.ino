@@ -1,3 +1,7 @@
+#define SDCARD_CS_PIN    10
+#define SDCARD_MOSI_PIN  7   // Teensy 4 ignores this, uses pin 11
+#define SDCARD_SCK_PIN   14  // Teensy 4 ignores this, uses pin 13
+
 const int numberButtons = 13;
 const int numberVoices = 4;
 
@@ -24,8 +28,16 @@ const float notes[numberButtons] = {
 const int octaveDownButton = 33;
 const int octaveUpButton   = 34;
 
+const int kickButton  = 35;
+const int snareButton = 36;
+const int hatButton   = 37;
+
 bool octaveDown = false;
 bool octaveUp = false;
+
+bool kickState = false;
+bool snareState = false;
+bool hatState = false;
 
 bool keyState[numberButtons];
 bool prevKeyState[numberButtons];
@@ -46,9 +58,9 @@ AudioSynthWaveform       waveform1;      //xy=465.5,354
 AudioSynthWaveform       waveform3;      //xy=465.5,444
 AudioSynthWaveform       waveform2;      //xy=466,400
 AudioSynthWaveform       waveform4;      //xy=466.5,489
-AudioPlaySdWav           playSdWav3;     //xy=469.5,634
-AudioPlaySdWav           playSdWav2;     //xy=470.5,593
-AudioPlaySdWav           playSdWav1;     //xy=471.5,552
+AudioPlaySdWav           playKick;     //xy=469.5,634
+AudioPlaySdWav           playSnare;     //xy=470.5,593
+AudioPlaySdWav           playHat;     //xy=471.5,552
 AudioEffectEnvelope      envelope2;      //xy=611.5,401
 AudioEffectEnvelope      envelope3;      //xy=611.5,442
 AudioEffectEnvelope      envelope4;      //xy=611.5,482
@@ -61,9 +73,9 @@ AudioConnection          patchCord1(waveform1, envelope1);
 AudioConnection          patchCord2(waveform3, envelope3);
 AudioConnection          patchCord3(waveform2, envelope2);
 AudioConnection          patchCord4(waveform4, envelope4);
-AudioConnection          patchCord5(playSdWav3, 0, mixer2, 2);
-AudioConnection          patchCord6(playSdWav2, 0, mixer2, 1);
-AudioConnection          patchCord7(playSdWav1, 0, mixer2, 0);
+AudioConnection          patchCord5(playKick, 0, mixer2, 2); // need to update this in diagram
+AudioConnection          patchCord6(playSnare, 0, mixer2, 1);
+AudioConnection          patchCord7(playHat, 0, mixer2, 0);
 AudioConnection          patchCord8(envelope2, 0, mixer1, 1);
 AudioConnection          patchCord9(envelope3, 0, mixer1, 2);
 AudioConnection          patchCord10(envelope4, 0, mixer1, 3);
@@ -147,6 +159,18 @@ float getNoteFrequency(int noteIndex) {
   return freq;
 }
 
+void updateOctaveButtons(){
+  bool newOctaveDown = (digitalRead(octaveDownButton) == LOW);
+  bool newOctaveUp   = (digitalRead(octaveUpButton) == LOW);
+
+  if (newOctaveDown != octaveDown ||
+    newOctaveUp   != octaveUp) {
+
+    octaveDown = newOctaveDown;
+    octaveUp   = newOctaveUp;
+  }
+}
+
 void updateActiveNotes() {
 
   for (int v = 0; v < numberVoices; v++) {
@@ -158,6 +182,33 @@ void updateActiveNotes() {
       );
     }
   }
+}
+
+
+void updateKeyboard() {
+
+  for (int i = 0; i < numberButtons; i++) {
+
+bool rawState = (digitalRead(buttonPins[i]) == LOW);
+
+if (rawState != keyState[i] &&
+    millis() - lastChangeTime[i] > debounceMs) {
+
+    lastChangeTime[i] = millis();
+
+    keyState[i] = rawState;
+
+    if (keyState[i]) {
+        startNote(i);
+    } else {
+        stopNote(i);
+    }
+}
+}
+}
+
+void updateDrums() {
+  //code here
 }
 
 void setup() {
@@ -248,41 +299,30 @@ for (int i = 0; i < numberButtons; i++) {
   pinMode(octaveDownButton, INPUT_PULLUP);
   pinMode(octaveUpButton, INPUT_PULLUP);
   pinMode(LED_BUILTIN, OUTPUT);
+
+//SD Card Setup:
+
+  SPI.setMOSI(SDCARD_MOSI_PIN);
+  SPI.setSCK(SDCARD_SCK_PIN);
+  if (!(SD.begin(SDCARD_CS_PIN))) {
+    // stop here, but print a message repetitively
+    while (1) {
+      Serial.println("Unable to access the SD card");
+      delay(500);
+    }
+  }
+
 }
 
 // Main loop
 
 void loop() {
-
-bool newOctaveDown = (digitalRead(octaveDownButton) == LOW);
-bool newOctaveUp   = (digitalRead(octaveUpButton) == LOW);
-
-if (newOctaveDown != octaveDown ||
-    newOctaveUp   != octaveUp) {
-
-  octaveDown = newOctaveDown;
-  octaveUp   = newOctaveUp;
-
+  updateOctaveButtons();
+  updateKeyboard();
+  updateDrums(); //not yet done
   updateActiveNotes();
-}
 
-for (int i = 0; i < numberButtons; i++) {
-bool rawState = (digitalRead(buttonPins[i]) == LOW);
-
-if (rawState != keyState[i] &&
-    millis() - lastChangeTime[i] > debounceMs) {
-
-    lastChangeTime[i] = millis();
-
-    keyState[i] = rawState;
-
-    if (keyState[i]) {
-        startNote(i);
-    } else {
-        stopNote(i);
-    }
-}
-}
+// UPDATE LED BELOW DOESN'T SEEM TO WORK
 
 bool anyKey = false;
 for (int i = 0; i < numberButtons; i++) {
@@ -290,5 +330,4 @@ for (int i = 0; i < numberButtons; i++) {
 }
 
 digitalWrite(LED_BUILTIN, anyKey);
-
 }
