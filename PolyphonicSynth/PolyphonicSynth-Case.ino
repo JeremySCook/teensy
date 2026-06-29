@@ -28,16 +28,18 @@ const float notes[numberButtons] = {
 const int octaveDownButton = 33;
 const int octaveUpButton   = 34;
 
-const int kickButton  = 35;
-const int snareButton = 36;
-const int hatButton   = 37;
+const int playSD1Button = 35;
+const int playSD2Button = 36;
+const int playSD3Button = 37;
+const int playSD4Button = 38;
 
 bool octaveDown = false;
 bool octaveUp = false;
 
-bool kickState = false;
-bool snareState = false;
-bool hatState = false;
+bool SD1State = false;
+bool SD2State = false;
+bool SD3State = false;
+bool SD4State = false;
 
 bool keyState[numberButtons];
 bool prevKeyState[numberButtons];
@@ -51,41 +53,49 @@ int voiceNote[numberVoices];
 #include <SD.h>
 #include <SerialFlash.h>
 #include <SparkFun_TPA2016D2_Arduino_Library.h> //Click here to get the library: http://librarymanager/All#SparkFun_TPA2016D2
-TPA2016D2 amp;
+TPA2016D2 tpaAmp;
 
 // GUItool: begin automatically generated code
 AudioSynthWaveform       waveform1;      //xy=465.5,354
 AudioSynthWaveform       waveform3;      //xy=465.5,444
+AudioSynthWaveform       waveform4;      //xy=465.5,487
 AudioSynthWaveform       waveform2;      //xy=466,400
-AudioSynthWaveform       waveform4;      //xy=466.5,489
-AudioPlaySdWav           playKick;     //xy=469.5,634
-AudioPlaySdWav           playSnare;     //xy=470.5,593
-AudioPlaySdWav           playHat;     //xy=471.5,552
+AudioPlaySdWav           playSD4;     //xy=468.5,673
+AudioPlaySdWav           playSD3;     //xy=469.5,633
+AudioPlaySdWav           playSD2;     //xy=470.5,592
+AudioPlaySdWav           playSD1;     //xy=471.5,550
 AudioEffectEnvelope      envelope2;      //xy=611.5,401
 AudioEffectEnvelope      envelope3;      //xy=611.5,442
 AudioEffectEnvelope      envelope4;      //xy=611.5,482
 AudioEffectEnvelope      envelope1;      //xy=613.5,360
-AudioMixer4              mixer2;         //xy=764.5,573
-AudioMixer4              mixer1;         //xy=769,421
-AudioMixer4              mixer3;         //xy=941.5,495
-AudioOutputI2S           i2s1;           //xy=1117.5,495
+AudioMixer4              mixerSample;         //xy=764.5,573
+AudioMixer4              mixerKeys;         //xy=769,421
+AudioMixer4              mixerMaster;         //xy=955.5,493
+AudioAmplifier           amp;           //xy=1110.5,493
+AudioOutputI2S           i2s1;           //xy=1278.5,492
 AudioConnection          patchCord1(waveform1, envelope1);
 AudioConnection          patchCord2(waveform3, envelope3);
-AudioConnection          patchCord3(waveform2, envelope2);
-AudioConnection          patchCord4(waveform4, envelope4);
-AudioConnection          patchCord5(playKick, 0, mixer2, 2); // need to update this in diagram
-AudioConnection          patchCord6(playSnare, 0, mixer2, 1);
-AudioConnection          patchCord7(playHat, 0, mixer2, 0);
-AudioConnection          patchCord8(envelope2, 0, mixer1, 1);
-AudioConnection          patchCord9(envelope3, 0, mixer1, 2);
-AudioConnection          patchCord10(envelope4, 0, mixer1, 3);
-AudioConnection          patchCord11(envelope1, 0, mixer1, 0);
-AudioConnection          patchCord12(mixer2, 0, mixer3, 1);
-AudioConnection          patchCord13(mixer1, 0, mixer3, 0);
-AudioConnection          patchCord14(mixer3, 0, i2s1, 1);
-AudioConnection          patchCord15(mixer3, 0, i2s1, 0);
+AudioConnection          patchCord3(waveform4, envelope4);
+AudioConnection          patchCord4(waveform2, envelope2);
+AudioConnection          patchCord5(playSD4, 0, mixerSample, 3);
+AudioConnection          patchCord6(playSD3, 0, mixerSample, 2);
+AudioConnection          patchCord7(playSD2, 0, mixerSample, 1);
+AudioConnection          patchCord8(playSD1, 0, mixerSample, 0);
+AudioConnection          patchCord9(envelope2, 0, mixerKeys, 1);
+AudioConnection          patchCord10(envelope3, 0, mixerKeys, 2);
+AudioConnection          patchCord11(envelope4, 0, mixerKeys, 3);
+AudioConnection          patchCord12(envelope1, 0, mixerKeys, 0);
+AudioConnection          patchCord13(mixerSample, 0, mixerMaster, 1);
+AudioConnection          patchCord14(mixerKeys, 0, mixerMaster, 0);
+AudioConnection          patchCord15(mixerMaster, amp);
+AudioConnection          patchCord16(amp, 0, i2s1, 0);
+AudioConnection          patchCord17(amp, 0, i2s1, 1);
 AudioControlSGTL5000     sgtl5000_1;     //xy=552.5,758
 // GUItool: end automatically generated code
+
+
+
+
 
 
 
@@ -207,30 +217,33 @@ if (rawState != keyState[i] &&
 }
 }
 
-void updateDrums() {
+void updateSamples() {
 
-    bool newKick = (digitalRead(kickButton) == LOW);
+    bool newSD1State = (digitalRead(playSD1Button) == LOW);
 
-    if (newKick && !kickState) {
-        playKick.play("KICK.WAV");
+    if (newSD1State && !SD1State) {
+        playSD1.play("KICK.WAV");
     }
-    kickState = newKick;
+    SD1State = newSD1State;
 
 
-    bool newSnare = (digitalRead(snareButton) == LOW);
+    bool newSD2State = (digitalRead(playSD2Button) == LOW);
 
-    if (newSnare && !snareState) {
-        playSnare.play("SNARE.WAV");
+    if (newSD2State && !SD2State) {
+        playSD2.play("SNARE.WAV");
     }
-    snareState = newSnare;
+    SD2State = newSD2State;
 
 
-    bool newHat = (digitalRead(hatButton) == LOW);
+    bool newSD3State = (digitalRead(playSD3Button) == LOW);
 
-    if (newHat && !hatState) {
-        playHat.play("HIHAT.WAV");
+    if (newSD3State && !SD3State) {
+        playSD3.play("HIHAT.WAV");
     }
-    hatState = newHat;
+    SD3State = newSD3State;
+
+  //Add a fourth voice for sample 4
+
 }
 
 void setup() {
@@ -238,7 +251,7 @@ void setup() {
   Serial.begin(9600);
   Wire.begin();
 
-  if (amp.begin() == false) //Begin communication over I2C
+  if (tpaAmp.begin() == false) //Begin communication over I2C
   {
     Serial.println("The device did not respond. Please check wiring.");
     while (1); //Freeze
@@ -246,13 +259,13 @@ void setup() {
   Serial.println("Device is connected properly.");
 
   // for gain control to react to changes quickly, we need to adjust some of the AGC settings as so...
-  amp.disableLimiter(); // note this also changes compression ratio to 1:1, then disables limiter.
-  amp.disableNoiseGate(); // disabling the noisegate allows us to always change the gain, even with very little sound at the source.
-  amp.writeRelease(1); // 1-63 are valid values. 1 being the shortest (aka fastest) release setting, this allows gain increases to happen quickly.
-  amp.writeAttack(1); // 1-63 are valid values. 1 being the shortest (aka fastest) attack setting, this allows gain decreases to happen quickly.
+  tpaAmp.disableLimiter(); // note this also changes compression ratio to 1:1, then disables limiter.
+  tpaAmp.disableNoiseGate(); // disabling the noisegate allows us to always change the gain, even with very little sound at the source.
+  tpaAmp.writeRelease(1); // 1-63 are valid values. 1 being the shortest (aka fastest) release setting, this allows gain increases to happen quickly.
+  tpaAmp.writeAttack(1); // 1-63 are valid values. 1 being the shortest (aka fastest) attack setting, this allows gain decreases to happen quickly.
 
   Serial.println("gain:+10");
-  amp.writeFixedGain(30); // aka "full gain at +30dB", accepts values from 0 to 30
+  tpaAmp.writeFixedGain(30); // aka "full gain at +30dB", accepts values from 0 to 30
   delay(5000);
 
   AudioMemory(80);
@@ -290,19 +303,19 @@ void setup() {
   envelope4.release(100);
 
   //Keys mixer
-  mixer1.gain(0, 0.25);
-  mixer1.gain(1, 0.25);
-  mixer1.gain(2, 0.25);
-  mixer1.gain(3, 0.25);
+  mixerKeys.gain(0, 0.25);
+  mixerKeys.gain(1, 0.25);
+  mixerKeys.gain(2, 0.25);
+  mixerKeys.gain(3, 0.25);
 
   // Drum mixer
-  mixer2.gain(0, 1.0);   // Hat
-  mixer2.gain(1, 1.0);   // Snare
-  mixer2.gain(2, 1.0);   // Kick
+  mixerSample.gain(0, 1.0);   // Hat
+  mixerSample.gain(1, 1.0);   // Snare
+  mixerSample.gain(2, 1.0);   // Kick
 
   // Final mixer
-  mixer3.gain(0, 0.7);   // Synth
-  mixer3.gain(1, 0.7);   // Drums
+  mixerMaster.gain(0, 0.7);   // Synth
+  mixerMaster.gain(1, 0.7);   // Drums
 
   waveform1.amplitude(1.0);
   waveform2.amplitude(1.0);
@@ -331,9 +344,9 @@ for (int i = 0; i < numberButtons; i++) {
   pinMode(octaveDownButton, INPUT_PULLUP);
   pinMode(octaveUpButton, INPUT_PULLUP);
   pinMode(LED_BUILTIN, OUTPUT);
-  pinMode(kickButton, INPUT_PULLUP);
-  pinMode(snareButton, INPUT_PULLUP);
-  pinMode(hatButton, INPUT_PULLUP);
+  pinMode(playSD1Button, INPUT_PULLUP);
+  pinMode(playSD2Button, INPUT_PULLUP);
+  pinMode(playSD3Button, INPUT_PULLUP);
 
 //SD Card Setup:
 
@@ -354,7 +367,7 @@ for (int i = 0; i < numberButtons; i++) {
 void loop() {
   updateOctaveButtons();
   updateKeyboard();
-  updateDrums(); //not yet done
+  updateSamples();
   updateActiveNotes();
 
 // UPDATE LED BELOW DOESN'T SEEM TO WORK
