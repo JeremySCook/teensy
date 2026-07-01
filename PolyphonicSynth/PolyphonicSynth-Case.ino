@@ -6,7 +6,7 @@ const int numberButtons = 13;
 const int numberVoices = 4;
 
 unsigned long lastChangeTime[numberButtons];
-const unsigned long debounceMs = 5;
+const unsigned long debounceMs = 10;
 
 const int buttonPins[numberButtons] = {24, 0, 25, 1, 26, 27, 2, 28, 3, 29, 4, 30, 31};
 const float notes[numberButtons] = {
@@ -33,16 +33,17 @@ const int playSD2Button = 36;
 const int playSD3Button = 37;
 const int playSD4Button = 38;
 
+const int volumePotPin = A17;
+
 bool octaveDown = false;
 bool octaveUp = false;
 
-bool SD1State = false;
-bool SD2State = false;
-bool SD3State = false;
-bool SD4State = false;
-
 bool keyState[numberButtons];
-bool prevKeyState[numberButtons];
+bool lastRawKeyState[numberButtons];
+
+bool sampleState[4] = {false, false, false, false};
+bool lastRawSampleState[4] = {false, false, false, false};
+unsigned long sampleChangeTime[4] = {0, 0, 0, 0};
 
 bool voiceActive[numberVoices];
 int voiceNote[numberVoices];
@@ -125,6 +126,7 @@ int findFreeVoice() {
 }
 
 void startNote(int noteIndex) {
+  Serial.println(noteIndex);
 
   int v = findFreeVoice();
 
@@ -197,53 +199,82 @@ void updateActiveNotes() {
 
 void updateKeyboard() {
 
+  unsigned long now = millis();
+
   for (int i = 0; i < numberButtons; i++) {
 
-bool rawState = (digitalRead(buttonPins[i]) == LOW);
+    bool rawState = (digitalRead(buttonPins[i]) == LOW);
 
-if (rawState != keyState[i] &&
-    millis() - lastChangeTime[i] > debounceMs) {
-
-    lastChangeTime[i] = millis();
-
-    keyState[i] = rawState;
-
-    if (keyState[i]) {
-        startNote(i);
-    } else {
-        stopNote(i);
+    // Raw input changed? Restart debounce timer.
+    if (rawState != lastRawKeyState[i]) {
+      lastRawKeyState[i] = rawState;
+      lastChangeTime[i] = now;
     }
-}
-}
+
+    // Has the input been stable long enough?
+    if ((now - lastChangeTime[i]) >= debounceMs) {
+
+      // Only act if the debounced state has changed.
+      if (keyState[i] != rawState) {
+
+        keyState[i] = rawState;
+
+        if (keyState[i]) {
+          startNote(i);
+        } else {
+          stopNote(i);
+        }
+      }
+    }
+  }
 }
 
 void updateSamples() {
 
-    bool newSD1State = (digitalRead(playSD1Button) == LOW);
+  unsigned long now = millis();
 
-    if (newSD1State && !SD1State) {
-        playSD1.play("KICK.WAV");
+  const int samplePins[4] = {
+    playSD1Button,
+    playSD2Button,
+    playSD3Button,
+    playSD4Button
+  };
+
+  AudioPlaySdWav* players[4] = {
+    &playSD1,
+    &playSD2,
+    &playSD3,
+    &playSD4
+  };
+
+  const char* filenames[4] = {
+    "KICK.WAV",
+    "SNARE.WAV",
+    "HIHAT.WAV",
+    "SAMPLE4.WAV"
+  };
+
+  for (int i = 0; i < 4; i++) {
+
+    bool rawState = (digitalRead(samplePins[i]) == LOW);
+
+    if (rawState != lastRawSampleState[i]) {
+      lastRawSampleState[i] = rawState;
+      sampleChangeTime[i] = now;
     }
-    SD1State = newSD1State;
 
+    if ((now - sampleChangeTime[i]) >= debounceMs) {
 
-    bool newSD2State = (digitalRead(playSD2Button) == LOW);
+      if (sampleState[i] != rawState) {
 
-    if (newSD2State && !SD2State) {
-        playSD2.play("SNARE.WAV");
+        sampleState[i] = rawState;
+
+        if (sampleState[i]) {
+          players[i]->play(filenames[i]);
+        }
+      }
     }
-    SD2State = newSD2State;
-
-
-    bool newSD3State = (digitalRead(playSD3Button) == LOW);
-
-    if (newSD3State && !SD3State) {
-        playSD3.play("HIHAT.WAV");
-    }
-    SD3State = newSD3State;
-
-  //Add a fourth voice for sample 4
-
+  }
 }
 
 void setup() {
@@ -264,13 +295,25 @@ void setup() {
   tpaAmp.writeRelease(1); // 1-63 are valid values. 1 being the shortest (aka fastest) release setting, this allows gain increases to happen quickly.
   tpaAmp.writeAttack(1); // 1-63 are valid values. 1 being the shortest (aka fastest) attack setting, this allows gain decreases to happen quickly.
 
-  Serial.println("gain:+10");
-  tpaAmp.writeFixedGain(30); // aka "full gain at +30dB", accepts values from 0 to 30
+  Serial.println("gain:+15");
+  tpaAmp.writeFixedGain(15); // aka "full gain at +30dB", accepts values from 0 to 30
   delay(5000);
 
-  AudioMemory(80);
+  AudioMemory(120);
   sgtl5000_1.enable();
-  sgtl5000_1.volume(0.32);
+  sgtl5000_1.volume(0.95);
+
+  for (int i = 0; i < numberButtons; i++) {
+  keyState[i] = false;
+  lastRawKeyState[i] = false;
+  lastChangeTime[i] = 0;
+}
+
+for (int i = 0; i < 4; i++) {
+  sampleState[i] = false;
+  lastRawSampleState[i] = false;
+  sampleChangeTime[i] = 0;
+}
 
   for (int i = 0; i < numberVoices; i++) {
   voiceActive[i] = false;
@@ -279,7 +322,6 @@ void setup() {
 
   for (int i = 0; i < numberButtons; i++) {
   keyState[i] = false;
-  prevKeyState[i] = false;
 }
 
   envelope1.attack(5);
@@ -347,6 +389,7 @@ for (int i = 0; i < numberButtons; i++) {
   pinMode(playSD1Button, INPUT_PULLUP);
   pinMode(playSD2Button, INPUT_PULLUP);
   pinMode(playSD3Button, INPUT_PULLUP);
+  pinMode(volumePotPin, INPUT);
 
 //SD Card Setup:
 
@@ -365,6 +408,9 @@ for (int i = 0; i < numberButtons; i++) {
 // Main loop
 
 void loop() {
+
+  float pot = analogRead(volumePotPin) / 1023.0f;
+  amp.gain(0.5f * pot * pot);
   updateOctaveButtons();
   updateKeyboard();
   updateSamples();
