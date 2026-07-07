@@ -389,6 +389,7 @@ for (int i = 0; i < numberButtons; i++) {
   pinMode(playSD1Button, INPUT_PULLUP);
   pinMode(playSD2Button, INPUT_PULLUP);
   pinMode(playSD3Button, INPUT_PULLUP);
+  pinMode(playSD4Button, INPUT_PULLUP);
   pinMode(volumePotPin, INPUT);
 
 //SD Card Setup:
