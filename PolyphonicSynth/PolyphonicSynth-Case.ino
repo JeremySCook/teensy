@@ -48,6 +48,14 @@ unsigned long sampleChangeTime[4] = {0, 0, 0, 0};
 bool voiceActive[numberVoices];
 int voiceNote[numberVoices];
 
+const int speakerButtonPin = 16;
+const int speakerLedPin    = 17;
+
+bool speakersEnabled = true;
+bool speakerState = false;
+bool lastRawSpeakerState = false;
+unsigned long speakerChangeTime = 0;
+
 #include <Audio.h>
 #include <Wire.h>
 #include <SPI.h>
@@ -123,6 +131,42 @@ int findFreeVoice() {
     }
   }
   return -1;
+}
+
+void updateSpeakerButton() {
+
+  unsigned long now = millis();
+
+  bool rawState = (digitalRead(speakerButtonPin) == LOW);
+
+  // Raw input changed? Restart debounce timer.
+  if (rawState != lastRawSpeakerState) {
+    lastRawSpeakerState = rawState;
+    speakerChangeTime = now;
+  }
+
+  // Has it been stable long enough?
+  if ((now - speakerChangeTime) >= debounceMs) {
+
+    if (speakerState != rawState) {
+
+      speakerState = rawState;
+
+      // Only toggle on the press
+      if (speakerState) {
+
+        speakersEnabled = !speakersEnabled;
+
+        if (speakersEnabled) {
+          tpaAmp.enableSpeakers();
+          digitalWrite(speakerLedPin, HIGH);
+        } else {
+          tpaAmp.disableSpeakers();
+          digitalWrite(speakerLedPin, LOW);
+        }
+      }
+    }
+  }
 }
 
 void startNote(int noteIndex) {
@@ -404,6 +448,12 @@ for (int i = 0; i < numberButtons; i++) {
     }
   }
 
+  pinMode(speakerButtonPin, INPUT_PULLUP);
+  pinMode(speakerLedPin, OUTPUT);
+
+  tpaAmp.enableSpeakers();
+  digitalWrite(speakerLedPin, HIGH);
+
 }
 
 // Main loop
@@ -412,6 +462,8 @@ void loop() {
 
   float pot = analogRead(volumePotPin) / 1023.0f;
   amp.gain(0.5f * pot * pot);
+
+  updateSpeakerButton();
   updateOctaveButtons();
   updateKeyboard();
   updateSamples();
