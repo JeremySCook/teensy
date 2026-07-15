@@ -1,6 +1,4 @@
 #define SDCARD_CS_PIN    10
-#define SDCARD_MOSI_PIN  7   // Teensy 4 ignores this, uses pin 11
-#define SDCARD_SCK_PIN   14  // Teensy 4 ignores this, uses pin 13
 
 const int numberButtons = 13;
 const int numberVoices = 4;
@@ -447,8 +445,6 @@ for (int i = 0; i < numberButtons; i++) {
 
 //SD Card Setup:
 
-  SPI.setMOSI(SDCARD_MOSI_PIN);
-  SPI.setSCK(SDCARD_SCK_PIN);
   if (!(SD.begin(SDCARD_CS_PIN))) {
     // stop here, but print a message repetitively
     while (1) {
