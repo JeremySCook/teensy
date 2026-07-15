@@ -245,9 +245,15 @@ void updateKeyboard() {
 
   unsigned long now = millis();
 
+  //bool anyButtonPressed = false;
+
   for (int i = 0; i < numberButtons; i++) {
 
     bool rawState = (digitalRead(buttonPins[i]) == LOW);
+
+    //if (rawState) {
+    //  anyButtonPressed = true;
+    //}
 
     // Raw input changed? Restart debounce timer.
     if (rawState != lastRawKeyState[i]) {
@@ -271,6 +277,7 @@ void updateKeyboard() {
       }
     }
   }
+  //digitalWrite(speakerLedPin, anyButtonPressed ? HIGH : LOW);
 }
 
 void updateSamples() {
@@ -336,12 +343,15 @@ void setup() {
   // for gain control to react to changes quickly, we need to adjust some of the AGC settings as so...
   tpaAmp.disableLimiter(); // note this also changes compression ratio to 1:1, then disables limiter.
   tpaAmp.disableNoiseGate(); // disabling the noisegate allows us to always change the gain, even with very little sound at the source.
-  tpaAmp.writeRelease(1); // 1-63 are valid values. 1 being the shortest (aka fastest) release setting, this allows gain increases to happen quickly.
-  tpaAmp.writeAttack(1); // 1-63 are valid values. 1 being the shortest (aka fastest) attack setting, this allows gain decreases to happen quickly.
+  tpaAmp.writeRelease(2); // 1-63 are valid values. 1 being the shortest (aka fastest) release setting, this allows gain increases to happen quickly.
+  tpaAmp.writeAttack(2); // 1-63 are valid values. 1 being the shortest (aka fastest) attack setting, this allows gain decreases to happen quickly.
 
   Serial.println("gain:+15");
   tpaAmp.writeFixedGain(15); // aka "full gain at +30dB", accepts values from 0 to 30
-  delay(5000);
+  //pinMode(LED_BUILTIN, OUTPUT);
+  //digitalWrite(LED_BUILTIN, HIGH);
+  //delay(50);
+  //digitalWrite(LED_BUILTIN, LOW);
 
   AudioMemory(120);
   sgtl5000_1.enable();
@@ -429,7 +439,6 @@ for (int i = 0; i < numberButtons; i++) {
 }
   pinMode(octaveDownButton, INPUT_PULLUP);
   pinMode(octaveUpButton, INPUT_PULLUP);
-  pinMode(LED_BUILTIN, OUTPUT);
   pinMode(playSD1Button, INPUT_PULLUP);
   pinMode(playSD2Button, INPUT_PULLUP);
   pinMode(playSD3Button, INPUT_PULLUP);
@@ -444,7 +453,7 @@ for (int i = 0; i < numberButtons; i++) {
     // stop here, but print a message repetitively
     while (1) {
       Serial.println("Unable to access the SD card");
-      delay(500);
+      delay(10);
     }
   }
 
@@ -468,13 +477,5 @@ void loop() {
   updateKeyboard();
   updateSamples();
   updateActiveNotes();
-
-// UPDATE LED BELOW DOESN'T SEEM TO WORK
-
-bool anyKey = false;
-for (int i = 0; i < numberButtons; i++) {
-  if (keyState[i]) anyKey = true;
-}
-
-digitalWrite(LED_BUILTIN, anyKey);
+  
 }
