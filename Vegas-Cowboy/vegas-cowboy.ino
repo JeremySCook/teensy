@@ -35,7 +35,7 @@ unsigned long lastDebounceTime = 0;
 // WAV files
 // -------------------------
 
-const char* wavFiles[8] = {
+const char* wavFiles[17] = {
   "COWBOY01.WAV",
   "COWBOY02.WAV",
   "COWBOY03.WAV",
@@ -43,10 +43,19 @@ const char* wavFiles[8] = {
   "COWBOY05.WAV",
   "COWBOY06.WAV",
   "COWBOY07.WAV",
-  "COWBOY08.WAV"
+  "COWBOY08.WAV",
+  "COWBOY09.WAV",
+  "COWBOY10.WAV",
+  "COWBOY11.WAV",
+  "COWBOY12.WAV",
+  "COWBOY13.WAV",
+  "COWBOY14.WAV",
+  "COWBOY15.WAV",
+  "COWBOY16.WAV",
+  "COWBOY17.WAV"
 };
 
-const int numClips = 8;
+const int numClips = 17;
 int lastClip = -1;
 
 // -------------------------
