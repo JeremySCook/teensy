@@ -140,7 +140,7 @@ void setup() {
 
   // Initialize Audio Shield
   sgtl5000_1.enable();
-  sgtl5000_1.volume(0.5);
+  sgtl5000_1.volume(0.7);
 
   // Initialize Audio Shield SD card
   if (!SD.begin(SD_CS)) {
